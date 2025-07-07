@@ -1,9 +1,49 @@
-class API {
-    static BASE_URL = 'http://localhost:5000';
-    
-    static async request(endpoint, options = {}) {
-        const url = `${this.BASE_URL}${endpoint}`;
+/**
+ * BassMetrics API Integration
+ * Handles all API calls to backend services
+ */
+
+class APIManager {
+    constructor() {
+        this.baseURL = 'http://localhost:5000/api'; // Will be updated for production
+        this.timeout = 10000; // 10 second timeout
+        this.retryAttempts = 3;
+        
+        // API endpoints
+        this.endpoints = {
+            // Chart endpoints
+            algorithmCharts: '/charts/algorithm',
+            communityCharts: '/charts/community', 
+            undergroundCharts: '/charts/underground',
+            risingCharts: '/charts/rising',
+            
+            // Verification endpoints
+            verifyArtist: '/verify/artist',
+            
+            // Submission endpoints
+            submitTrack: '/submit/track',
+            
+            // Voting endpoints
+            votingTracks: '/voting/tracks',
+            submitVote: '/voting/vote',
+            
+            // User endpoints
+            login: '/auth/login',
+            register: '/auth/register',
+            profile: '/auth/profile',
+            
+            // Platform endpoints
+            spotifySearch: '/platforms/spotify/search',
+            soundcloudSearch: '/platforms/soundcloud/search',
+            youtubeSearch: '/platforms/youtube/search'
+        };
+    }
+
+    // Generic API request handler with retry logic
+    async makeRequest(endpoint, options = {}) {
+        const url = `${this.baseURL}${endpoint}`;
         const config = {
+            timeout: this.timeout,
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
@@ -11,327 +51,339 @@ class API {
             ...options
         };
 
-        if (options.body && typeof options.body === 'object') {
-            config.body = JSON.stringify(options.body);
-        }
-
-        try {
-            const response = await fetch(url, config);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+                
+                const response = await fetch(url, {
+                    ...config,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                return data;
+                
+            } catch (error) {
+                console.warn(`API request attempt ${attempt} failed:`, error.message);
+                
+                if (attempt === this.retryAttempts) {
+                    throw new Error(`API request failed after ${this.retryAttempts} attempts: ${error.message}`);
+                }
+                
+                // Exponential backoff
+                await this.delay(Math.pow(2, attempt) * 1000);
             }
-            
-            return data;
+        }
+    }
+
+    // Authentication token management
+    getAuthToken() {
+        return localStorage.getItem('bassMetricsToken');
+    }
+
+    setAuthToken(token) {
+        localStorage.setItem('bassMetricsToken', token);
+    }
+
+    clearAuthToken() {
+        localStorage.removeItem('bassMetricsToken');
+    }
+
+    getAuthHeaders() {
+        const token = this.getAuthToken();
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
+    }
+
+    // CHART API METHODS
+    async getAlgorithmCharts(view = 'mainstream', limit = 20) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.algorithmCharts}?view=${view}&limit=${limit}`
+            );
         } catch (error) {
-            console.error('API request failed:', error);
+            console.error('Failed to fetch algorithm charts:', error);
             throw error;
         }
     }
 
-    static async get(endpoint, token = null) {
-        const headers = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
+    async getCommunityCharts(view = 'overall', limit = 20) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.communityCharts}?view=${view}&limit=${limit}`
+            );
+        } catch (error) {
+            console.error('Failed to fetch community charts:', error);
+            throw error;
+        }
+    }
+
+    async getUndergroundTracks(limit = 10) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.undergroundCharts}?limit=${limit}`
+            );
+        } catch (error) {
+            console.error('Failed to fetch underground tracks:', error);
+            throw error;
+        }
+    }
+
+    async getRisingTracks(limit = 10) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.risingCharts}?limit=${limit}`
+            );
+        } catch (error) {
+            console.error('Failed to fetch rising tracks:', error);
+            throw error;
+        }
+    }
+
+    // VERIFICATION API METHODS
+    async verifyArtist(artistName, platform = 'spotify') {
+        try {
+            const response = await this.makeRequest(
+                `${this.endpoints.verifyArtist}?name=${encodeURIComponent(artistName)}&platform=${platform}`
+            );
+            return response;
+        } catch (error) {
+            console.error('Artist verification failed:', error);
+            throw error;
+        }
+    }
+
+    // SUBMISSION API METHODS
+    async submitTrack(trackData) {
+        try {
+            return await this.makeRequest(this.endpoints.submitTrack, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(trackData)
+            });
+        } catch (error) {
+            console.error('Track submission failed:', error);
+            throw error;
+        }
+    }
+
+    // VOTING API METHODS
+    async getTracksForVoting(limit = 10, genre = null) {
+        try {
+            let url = `${this.endpoints.votingTracks}?limit=${limit}`;
+            if (genre) {
+                url += `&genre=${genre}`;
+            }
+            return await this.makeRequest(url);
+        } catch (error) {
+            console.error('Failed to fetch voting tracks:', error);
+            throw error;
+        }
+    }
+
+    async submitVote(trackId, scores) {
+        try {
+            return await this.makeRequest(this.endpoints.submitVote, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify({
+                    track_id: trackId,
+                    scores: scores
+                })
+            });
+        } catch (error) {
+            console.error('Vote submission failed:', error);
+            throw error;
+        }
+    }
+
+    // USER AUTHENTICATION API METHODS
+    async login(credentials) {
+        try {
+            const response = await this.makeRequest(this.endpoints.login, {
+                method: 'POST',
+                body: JSON.stringify(credentials)
+            });
+            
+            if (response.token) {
+                this.setAuthToken(response.token);
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Login failed:', error);
+            throw error;
+        }
+    }
+
+    async register(userData) {
+        try {
+            const response = await this.makeRequest(this.endpoints.register, {
+                method: 'POST',
+                body: JSON.stringify(userData)
+            });
+            
+            if (response.token) {
+                this.setAuthToken(response.token);
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Registration failed:', error);
+            throw error;
+        }
+    }
+
+    async getUserProfile() {
+        try {
+            return await this.makeRequest(this.endpoints.profile, {
+                headers: this.getAuthHeaders()
+            });
+        } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            throw error;
+        }
+    }
+
+    async logout() {
+        this.clearAuthToken();
+        return { success: true };
+    }
+
+    // PLATFORM INTEGRATION API METHODS
+    async searchSpotify(query) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.spotifySearch}?q=${encodeURIComponent(query)}`
+            );
+        } catch (error) {
+            console.error('Spotify search failed:', error);
+            throw error;
+        }
+    }
+
+    async searchSoundCloud(query) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.soundcloudSearch}?q=${encodeURIComponent(query)}`
+            );
+        } catch (error) {
+            console.error('SoundCloud search failed:', error);
+            throw error;
+        }
+    }
+
+    async searchYouTube(query) {
+        try {
+            return await this.makeRequest(
+                `${this.endpoints.youtubeSearch}?q=${encodeURIComponent(query)}`
+            );
+        } catch (error) {
+            console.error('YouTube search failed:', error);
+            throw error;
+        }
+    }
+
+    // EMBEDDED PLAYER HELPERS
+    getSoundCloudEmbed(trackUrl) {
+        if (!trackUrl) return null;
+        
+        try {
+            // Extract track info from SoundCloud URL
+            const trackId = this.extractSoundCloudId(trackUrl);
+            if (!trackId) return null;
+            
+            return `https://w.soundcloud.com/player/?url=${encodeURIComponent(trackUrl)}&color=%23ff0000&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
+        } catch (error) {
+            console.error('Failed to generate SoundCloud embed:', error);
+            return null;
+        }
+    }
+
+    getYouTubeEmbed(videoUrl) {
+        if (!videoUrl) return null;
+        
+        try {
+            const videoId = this.extractYouTubeId(videoUrl);
+            if (!videoId) return null;
+            
+            return `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&rel=0`;
+        } catch (error) {
+            console.error('Failed to generate YouTube embed:', error);
+            return null;
+        }
+    }
+
+    getSpotifyEmbed(trackUrl) {
+        if (!trackUrl) return null;
+        
+        try {
+            // Convert Spotify URL to embed format
+            const trackId = this.extractSpotifyId(trackUrl);
+            if (!trackId) return null;
+            
+            return `https://open.spotify.com/embed/track/${trackId}`;
+        } catch (error) {
+            console.error('Failed to generate Spotify embed:', error);
+            return null;
+        }
+    }
+
+    // URL EXTRACTION HELPERS
+    extractSoundCloudId(url) {
+        const patterns = [
+            /soundcloud\.com\/([^\/]+)\/([^\/\?]+)/,
+            /api\.soundcloud\.com\/tracks\/(\d+)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) return match[match.length - 1];
         }
         
-        return this.request(endpoint, {
-            method: 'GET',
-            headers
-        });
+        return null;
     }
 
-    static async post(endpoint, data, token = null) {
-        const headers = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
+    extractYouTubeId(url) {
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+            /youtube\.com\/embed\/([^&\n?#]+)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) return match[1];
         }
         
-        return this.request(endpoint, {
-            method: 'POST',
-            headers,
-            body: data
-        });
+        return null;
     }
 
-    static async put(endpoint, data, token = null) {
-        const headers = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
+    extractSpotifyId(url) {
+        const patterns = [
+            /spotify\.com\/track\/([^&\n?#]+)/,
+            /spotify:track:([^&\n?#]+)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) return match[1];
         }
         
-        return this.request(endpoint, {
-            method: 'PUT',
-            headers,
-            body: data
-        });
+        return null;
     }
 
-    static async delete(endpoint, token = null) {
-        const headers = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
-        
-        return this.request(endpoint, {
-            method: 'DELETE',
-            headers
-        });
+    // UTILITY METHODS
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    static async login(username, password) {
-        return this.post('/auth/login', {
-            username,
-            password
-        });
-    }
-
-    static async register(username, email, password) {
-        return this.post('/auth/register', {
-            username,
-            email,
-            password
-        });
-    }
-
-    static async validateToken(token) {
-        return this.get('/auth/validate', token);
-    }
-
-    static async getCharts(period = 'weekly', genre = 'all') {
-        const params = new URLSearchParams();
-        if (period !== 'weekly') params.append('period', period);
-        if (genre !== 'all') params.append('genre', genre);
-        
-        const queryString = params.toString();
-        const endpoint = `/charts${queryString ? `?${queryString}` : ''}`;
-        
-        return this.get(endpoint);
-    }
-
-    static async searchTracks(query) {
-        const params = new URLSearchParams({ q: query });
-        return this.get(`/tracks/search?${params}`);
-    }
-
-    static async getTrack(trackId) {
-        return this.get(`/tracks/${trackId}`);
-    }
-
-    static async submitTrack(trackData, token) {
-        return this.post('/tracks', trackData, token);
-    }
-
-    static async submitVote(trackId, score, token) {
-        return this.post(`/tracks/${trackId}/vote`, {
-            score
-        }, token);
-    }
-
-    static async getTrackVotes(trackId, token) {
-        return this.get(`/tracks/${trackId}/votes`, token);
-    }
-
-    static async submitComment(trackId, text, token) {
-        return this.post(`/tracks/${trackId}/comments`, {
-            text
-        }, token);
-    }
-
-    static async getTrackComments(trackId) {
-        return this.get(`/tracks/${trackId}/comments`);
-    }
-
-    static async getUserStats(userId, token) {
-        return this.get(`/users/${userId}/stats`, token);
-    }
-
-    static async getUserProfile(userId, token) {
-        return this.get(`/users/${userId}`, token);
-    }
-
-    static async updateUserProfile(userId, profileData, token) {
-        return this.put(`/users/${userId}`, profileData, token);
-    }
-
-    static async getTrendingTracks(limit = 20) {
-        return this.get(`/tracks/trending?limit=${limit}`);
-    }
-
-    static async getTopTracks(period = 'weekly', limit = 20) {
-        const params = new URLSearchParams({
-            period,
-            limit: limit.toString()
-        });
-        return this.get(`/tracks/top?${params}`);
-    }
-
-    static async getRecentTracks(limit = 20) {
-        return this.get(`/tracks/recent?limit=${limit}`);
-    }
-
-    static async getTracksByGenre(genre, limit = 20) {
-        const params = new URLSearchParams({
-            genre,
-            limit: limit.toString()
-        });
-        return this.get(`/tracks/genre?${params}`);
-    }
-
-    static async getTracksByPlatform(platform, limit = 20) {
-        const params = new URLSearchParams({
-            platform,
-            limit: limit.toString()
-        });
-        return this.get(`/tracks/platform?${params}`);
-    }
-
-    static async verifyTrack(trackId, token) {
-        return this.post(`/tracks/${trackId}/verify`, {}, token);
-    }
-
-    static async reportTrack(trackId, reason, token) {
-        return this.post(`/tracks/${trackId}/report`, {
-            reason
-        }, token);
-    }
-
-    static async getSystemStatus() {
-        return this.get('/status');
-    }
-
-    static async getLeaderboard(type = 'voters', limit = 10) {
-        const params = new URLSearchParams({
-            type,
-            limit: limit.toString()
-        });
-        return this.get(`/leaderboard?${params}`);
-    }
-
-    static async getWeeklyChart(week = null) {
-        const params = new URLSearchParams();
-        if (week) params.append('week', week);
-        return this.get(`/charts/weekly?${params}`);
-    }
-
-    static async getMonthlyChart(month = null) {
-        const params = new URLSearchParams();
-        if (month) params.append('month', month);
-        return this.get(`/charts/monthly?${params}`);
-    }
-
-    static async getArtistTracks(artist, limit = 20) {
-        const params = new URLSearchParams({
-            artist,
-            limit: limit.toString()
-        });
-        return this.get(`/tracks/artist?${params}`);
-    }
-
-    static async getArtistStats(artist) {
-        return this.get(`/artists/${encodeURIComponent(artist)}/stats`);
-    }
-
-    static async getGenreStats() {
-        return this.get('/stats/genres');
-    }
-
-    static async getPlatformStats() {
-        return this.get('/stats/platforms');
-    }
-
-    static async getVotingStats() {
-        return this.get('/stats/voting');
-    }
-
-    static async searchArtists(query) {
-        const params = new URLSearchParams({ q: query });
-        return this.get(`/artists/search?${params}`);
-    }
-
-    static async followArtist(artistId, token) {
-        return this.post(`/artists/${artistId}/follow`, {}, token);
-    }
-
-    static async unfollowArtist(artistId, token) {
-        return this.delete(`/artists/${artistId}/follow`, token);
-    }
-
-    static async getFollowedArtists(token) {
-        return this.get('/users/me/following', token);
-    }
-
-    static async getRecommendations(token, limit = 10) {
-        const params = new URLSearchParams({
-            limit: limit.toString()
-        });
-        return this.get(`/recommendations?${params}`, token);
-    }
-
-    static async getPersonalizedCharts(token, period = 'weekly') {
-        const params = new URLSearchParams({ period });
-        return this.get(`/charts/personalized?${params}`, token);
-    }
-
-    static async exportData(format = 'json', token) {
-        const params = new URLSearchParams({ format });
-        return this.get(`/export?${params}`, token);
-    }
-
-    static async importPlaylist(playlistData, token) {
-        return this.post('/playlists/import', playlistData, token);
-    }
-
-    static async createPlaylist(name, description, token) {
-        return this.post('/playlists', {
-            name,
-            description
-        }, token);
-    }
-
-    static async addToPlaylist(playlistId, trackId, token) {
-        return this.post(`/playlists/${playlistId}/tracks`, {
-            track_id: trackId
-        }, token);
-    }
-
-    static async removeFromPlaylist(playlistId, trackId, token) {
-        return this.delete(`/playlists/${playlistId}/tracks/${trackId}`, token);
-    }
-
-    static async getUserPlaylists(token) {
-        return this.get('/playlists', token);
-    }
-
-    static async getPlaylist(playlistId, token) {
-        return this.get(`/playlists/${playlistId}`, token);
-    }
-
-    static async updatePlaylist(playlistId, data, token) {
-        return this.put(`/playlists/${playlistId}`, data, token);
-    }
-
-    static async deletePlaylist(playlistId, token) {
-        return this.delete(`/playlists/${playlistId}`, token);
-    }
-
-    static async sharePlaylist(playlistId, token) {
-        return this.post(`/playlists/${playlistId}/share`, {}, token);
-    }
-
-    static async getSharedPlaylist(shareId) {
-        return this.get(`/playlists/shared/${shareId}`);
-    }
-
-    static async getAnalytics(token, period = 'weekly') {
-        const params = new URLSearchParams({ period });
-        return this.get(`/analytics?${params}`, token);
-    }
-
-    static async getTrackAnalytics(trackId, token) {
-        return this.get(`/tracks/${trackId}/analytics`, token);
-    }
-}
-
-window.API = API;
+    isValidUrl(string) {
+        try {
+            new URL(string);
+            retu
