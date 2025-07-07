@@ -256,6 +256,10 @@ def status():
         'timestamp': datetime.utcnow().isoformat()
     })
 
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok'}), 200
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({'message': 'Not found'}), 404
