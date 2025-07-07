@@ -80,7 +80,7 @@ class PlatformData(db.Model):
     url = db.Column(db.String(500))
     external_id = db.Column(db.String(255))
     thumbnail_url = db.Column(db.String(500))
-    metadata = db.Column(db.Text)  # JSON string for additional platform-specific data
+    platform_metadata = db.Column(db.Text)  # JSON string for additional platform-specific data
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -90,12 +90,12 @@ class PlatformData(db.Model):
     track = db.relationship("Track", back_populates="platform_data")
     
     def set_metadata(self, data):
-        self.metadata = json.dumps(data)
-    
-    def get_metadata(self):
-        if self.metadata:
-            return json.loads(self.metadata)
-        return {}
+    self.metadata = json.dumps(data)
+
+def get_metadata(self):
+    if self.metadata:
+        return json.loads(self.metadata)
+    return {}
     
     def __repr__(self):
         return f'<PlatformData {self.platform}:{self.external_id}>'
