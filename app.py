@@ -20,11 +20,12 @@ app.config.from_object(Config)
 db.init_app(app)
 CORS(app)
 
+# ✅ FIXED Limiter init
 limiter = Limiter(
-    app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
+limiter.init_app(app)
 
 def token_required(f):
     @wraps(f)
@@ -440,10 +441,8 @@ def create_tables():
     db.create_all()
 
 if __name__ == '__main__':
-    import os
     with app.app_context():
         db.create_all()
     
-    # Railway provides PORT environment variable
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
