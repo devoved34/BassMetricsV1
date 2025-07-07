@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dubstep Discovery & Rating Agent</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">DUBSTEP DISCOVERY</h1>
+            <div class="nav-links">
+                <button class="nav-btn active" data-section="charts">Charts</button>
+                <button class="nav-btn" data-section="vote">Vote</button>
+                <button class="nav-btn" data-section="submit">Submit</button>
+                <button class="nav-btn" data-section="profile">Profile</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section id="charts" class="section active">
+            <div class="section-header">
+                <h2>Weekly Charts</h2>
+                <div class="chart-controls">
+                    <select id="chartPeriod">
+                        <option value="weekly">This Week</option>
+                        <option value="monthly">This Month</option>
+                        <option value="alltime">All Time</option>
+                    </select>
+                    <select id="chartGenre">
+                        <option value="all">All Genres</option>
+                        <option value="dubstep">Dubstep</option>
+                        <option value="riddim">Riddim</option>
+                        <option value="future-bass">Future Bass</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-list" id="chartList">
+                    <div class="loading">Loading charts...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="vote" class="section">
+            <div class="section-header">
+                <h2>Vote on Tracks</h2>
+                <div class="vote-controls">
+                    <input type="search" id="trackSearch" placeholder="Search tracks to vote on...">
+                    <button id="searchBtn">Search</button>
+                </div>
+            </div>
+            <div class="vote-container">
+                <div class="vote-list" id="voteList">
+                    <div class="info-message">Search for tracks to start voting</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="submit" class="section">
+            <div class="section-header">
+                <h2>Submit Track</h2>
+                <p>Add new tracks to the discovery system</p>
+            </div>
+            <div class="submit-container">
+                <form id="submitForm" class="submit-form">
+                    <div class="form-group">
+                        <label for="trackUrl">Track URL</label>
+                        <input type="url" id="trackUrl" required placeholder="https://soundcloud.com/artist/track">
+                        <small>Supported: SoundCloud, Spotify, YouTube</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="trackTitle">Track Title</label>
+                        <input type="text" id="trackTitle" required placeholder="Track title">
+                    </div>
+                    <div class="form-group">
+                        <label for="trackArtist">Artist</label>
+                        <input type="text" id="trackArtist" required placeholder="Artist name">
+                    </div>
+                    <div class="form-group">
+                        <label for="trackGenre">Genre</label>
+                        <select id="trackGenre" required>
+                            <option value="">Select Genre</option>
+                            <option value="dubstep">Dubstep</option>
+                            <option value="riddim">Riddim</option>
+                            <option value="future-bass">Future Bass</option>
+                            <option value="trap">Trap</option>
+                            <option value="dnb">Drum & Bass</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trackDescription">Description (Optional)</label>
+                        <textarea id="trackDescription" placeholder="Why should this track be added?"></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Submit Track</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="profile" class="section">
+            <div class="section-header">
+                <h2>Profile</h2>
+            </div>
+            <div class="profile-container">
+                <div id="loginForm" class="auth-form">
+                    <h3>Login</h3>
+                    <form id="loginFormElement">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" required>
+                        </div>
+                        <button type="submit" class="auth-btn">Login</button>
+                    </form>
+                    <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+                </div>
+
+                <div id="registerForm" class="auth-form hidden">
+                    <h3>Register</h3>
+                    <form id="registerFormElement">
+                        <div class="form-group">
+                            <label for="regUsername">Username</label>
+                            <input type="text" id="regUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email</label>
+                            <input type="email" id="regEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <input type="password" id="regPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPasswordConfirm">Confirm Password</label>
+                            <input type="password" id="regPasswordConfirm" required>
+                        </div>
+                        <button type="submit" class="auth-btn">Register</button>
+                    </form>
+                    <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+                </div>
+
+                <div id="userProfile" class="user-profile hidden">
+                    <h3>Welcome, <span id="profileUsername"></span>!</h3>
+                    <div class="profile-stats">
+                        <div class="stat">
+                            <span class="stat-label">Votes Cast:</span>
+                            <span class="stat-value" id="votesCount">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Tracks Submitted:</span>
+                            <span class="stat-value" id="submissionsCount">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Trust Score:</span>
+                            <span class="stat-value" id="trustScore">0</span>
+                        </div>
+                    </div>
+                    <button id="logoutBtn" class="auth-btn">Logout</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="notification" class="notification hidden"></div>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
