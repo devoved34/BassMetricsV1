@@ -1,359 +1,297 @@
-class DubstepApp {
+/**
+ * BassMetrics Dashboard - Advanced Application Logic
+ * Handles section switching, data management, voting, and user interactions
+ */
+
+class BassMetricsApp {
     constructor() {
+        this.currentSection = 'charts';
         this.currentUser = null;
-        this.authToken = localStorage.getItem('authToken');
+        this.isVerified = false;
+        this.votingTracks = [];
+        this.userVotes = new Map();
+        
+        // View states for different chart types
+        this.chartViews = {
+            algorithm: 'mainstream',
+            community: 'overall'
+        };
+        
+        // Cache for API responses
+        this.cache = new Map();
+        
         this.init();
     }
 
     init() {
-        this.setupNavigation();
-        this.setupAuth();
-        this.setupForms();
+        this.setupEventListeners();
         this.loadInitialData();
-        
-        if (this.authToken) {
-            this.validateToken();
-        }
+        this.checkAuthStatus();
     }
 
-    setupNavigation() {
-        const navBtns = document.querySelectorAll('.nav-btn');
-        const sections = document.querySelectorAll('.section');
-
-        navBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetSection = btn.dataset.section;
-                
-                navBtns.forEach(b => b.classList.remove('active'));
-                sections.forEach(s => s.classList.remove('active'));
-                
-                btn.classList.add('active');
-                document.getElementById(targetSection).classList.add('active');
-                
-                this.loadSectionData(targetSection);
+    setupEventListeners() {
+        // Navigation between sections
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.switchSection(e.target.dataset.section);
             });
         });
+
+        // Chart toggle buttons
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleChartToggle(e));
+        });
+
+        // Artist verification
+        const artistInput = document.getElementById('artist-name');
+        if (artistInput) {
+            let debounceTimer;
+            artistInput.addEventListener('input', (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    this.checkArtistVerification(e.target.value);
+                }, 500);
+            });
+        }
+
+        // Forms
+        this.setupFormHandlers();
+        
+        // Authentication
+        this.setupAuthHandlers();
+        
+        // Voting interactions
+        this.setupVotingHandlers();
     }
 
-    setupAuth() {
-        const loginForm = document.getElementById('loginFormElement');
-        const registerForm = document.getElementById('registerFormElement');
-        const showRegisterBtn = document.getElementById('showRegister');
-        const showLoginBtn = document.getElementById('showLogin');
-        const logoutBtn = document.getElementById('logoutBtn');
+    setupFormHandlers() {
+        // Verification form
+        const verificationForm = document.getElementById('verification-form');
+        if (verificationForm) {
+            verificationForm.addEventListener('submit', (e) => this.handleVerification(e));
+        }
 
-        loginForm.addEventListener('submit', (e) => this.handleLogin(e));
-        registerForm.addEventListener('submit', (e) => this.handleRegister(e));
-        showRegisterBtn.addEventListener('click', () => this.toggleAuthForm('register'));
-        showLoginBtn.addEventListener('click', () => this.toggleAuthForm('login'));
-        logoutBtn.addEventListener('click', () => this.handleLogout());
+        // Submission form
+        const submissionForm = document.getElementById('submission-form');
+        if (submissionForm) {
+            submissionForm.addEventListener('submit', (e) => this.handleTrackSubmission(e));
+        }
+
+        // Vote search
+        const voteSearch = document.getElementById('vote-search');
+        if (voteSearch) {
+            voteSearch.addEventListener('input', (e) => this.handleVoteSearch(e.target.value));
+        }
+
+        // Load voting tracks button
+        const loadVotingBtn = document.getElementById('load-voting-tracks');
+        if (loadVotingBtn) {
+            loadVotingBtn.addEventListener('click', () => this.loadVotingTracks());
+        }
     }
 
-    setupForms() {
-        const submitForm = document.getElementById('submitForm');
-        const searchBtn = document.getElementById('searchBtn');
-        const trackSearch = document.getElementById('trackSearch');
-        const chartPeriod = document.getElementById('chartPeriod');
-        const chartGenre = document.getElementById('chartGenre');
+    setupAuthHandlers() {
+        // Show/hide auth forms
+        const showRegister = document.getElementById('show-register');
+        const showLogin = document.getElementById('show-login');
+        
+        if (showRegister) {
+            showRegister.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleAuthForms('register');
+            });
+        }
+        
+        if (showLogin) {
+            showLogin.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleAuthForms('login');
+            });
+        }
 
-        submitForm.addEventListener('submit', (e) => this.handleTrackSubmit(e));
-        searchBtn.addEventListener('click', () => this.handleTrackSearch());
-        trackSearch.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleTrackSearch();
+        // Auth form submissions
+        const loginForm = document.querySelector('#login-form form');
+        const registerForm = document.querySelector('#register-form form');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+        
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+        }
+        
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.handleLogout());
+        }
+    }
+
+    setupVotingHandlers() {
+        // Event delegation for voting controls
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('vote-track-btn')) {
+                this.handleTrackVote(e.target.dataset.trackId);
+            }
+            
+            if (e.target.classList.contains('play-btn')) {
+                this.handlePlayTrack(e.target.dataset.trackId);
+            }
+        });
+
+        // Range input handlers for component voting
+        document.addEventListener('input', (e) => {
+            if (e.target.type === 'range' && e.target.dataset.component) {
+                this.updateVoteDisplay(e.target);
+            }
+        });
+    }
+
+    // Section Management
+    switchSection(sectionName) {
+        // Hide all sections
+        document.querySelectorAll('.section').forEach(section => {
+            section.classList.remove('active');
         });
         
-        chartPeriod.addEventListener('change', () => this.loadCharts());
-        chartGenre.addEventListener('change', () => this.loadCharts());
-    }
-
-    async validateToken() {
-        try {
-            const user = await API.validateToken(this.authToken);
-            this.currentUser = user;
-            this.updateAuthUI();
-        } catch (error) {
-            localStorage.removeItem('authToken');
-            this.authToken = null;
-            this.currentUser = null;
-        }
-    }
-
-    async handleLogin(e) {
-        e.preventDefault();
+        // Update navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
         
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        try {
-            const response = await API.login(username, password);
-            this.authToken = response.token;
-            this.currentUser = response.user;
+        // Show selected section
+        const targetSection = document.getElementById(sectionName);
+        const targetNavBtn = document.querySelector(`[data-section="${sectionName}"]`);
+        
+        if (targetSection && targetNavBtn) {
+            targetSection.classList.add('active');
+            targetNavBtn.classList.add('active');
+            this.currentSection = sectionName;
             
-            localStorage.setItem('authToken', this.authToken);
-            this.updateAuthUI();
-            this.showNotification('Login successful!', 'success');
-            
-            document.getElementById('loginFormElement').reset();
-        } catch (error) {
-            this.showNotification(error.message, 'error');
+            // Load section-specific data
+            this.loadSectionData(sectionName);
         }
     }
 
-    async handleRegister(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('regUsername').value;
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
-        const confirmPassword = document.getElementById('regPasswordConfirm').value;
-
-        if (password !== confirmPassword) {
-            this.showNotification('Passwords do not match!', 'error');
-            return;
-        }
-
-        try {
-            await API.register(username, email, password);
-            this.showNotification('Registration successful! Please login.', 'success');
-            this.toggleAuthForm('login');
-            document.getElementById('registerFormElement').reset();
-        } catch (error) {
-            this.showNotification(error.message, 'error');
-        }
-    }
-
-    handleLogout() {
-        localStorage.removeItem('authToken');
-        this.authToken = null;
-        this.currentUser = null;
-        this.updateAuthUI();
-        this.showNotification('Logged out successfully!', 'success');
-    }
-
-    toggleAuthForm(form) {
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        
-        if (form === 'register') {
-            loginForm.classList.add('hidden');
-            registerForm.classList.remove('hidden');
-        } else {
-            registerForm.classList.add('hidden');
-            loginForm.classList.remove('hidden');
-        }
-    }
-
-    updateAuthUI() {
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const userProfile = document.getElementById('userProfile');
-        
-        if (this.currentUser) {
-            loginForm.classList.add('hidden');
-            registerForm.classList.add('hidden');
-            userProfile.classList.remove('hidden');
-            
-            document.getElementById('profileUsername').textContent = this.currentUser.username;
-            document.getElementById('votesCount').textContent = this.currentUser.votes_count || 0;
-            document.getElementById('submissionsCount').textContent = this.currentUser.submissions_count || 0;
-            document.getElementById('trustScore').textContent = this.currentUser.trust_score || 0;
-        } else {
-            userProfile.classList.add('hidden');
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-        }
-    }
-
-    async loadSectionData(section) {
-        switch (section) {
+    loadSectionData(sectionName) {
+        switch(sectionName) {
             case 'charts':
-                await this.loadCharts();
+                this.loadAllCharts();
                 break;
             case 'vote':
-                break;
-            case 'submit':
+                this.loadVotingTracks();
                 break;
             case 'profile':
-                if (this.currentUser) {
-                    await this.loadUserStats();
-                }
+                this.updateProfileStats();
                 break;
         }
     }
 
-    async loadInitialData() {
-        await this.loadCharts();
+    // Chart Management
+    handleChartToggle(event) {
+        const button = event.target;
+        const view = button.dataset.view;
+        const chartType = button.dataset.chart;
+        
+        // Update button states
+        const parent = button.closest('.panel-header');
+        parent.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        button.classList.add('active');
+        
+        // Update view state and reload chart
+        this.chartViews[chartType] = view;
+        this.loadChart(chartType, view);
     }
 
-    async loadCharts() {
-        const chartList = document.getElementById('chartList');
-        const period = document.getElementById('chartPeriod').value;
-        const genre = document.getElementById('chartGenre').value;
-        
-        chartList.innerHTML = '<div class="loading">Loading charts...</div>';
+    async loadAllCharts() {
+        this.showLoading();
         
         try {
-            const charts = await API.getCharts(period, genre);
-            this.renderCharts(charts);
+            await Promise.all([
+                this.loadChart('algorithm', this.chartViews.algorithm),
+                this.loadChart('community', this.chartViews.community),
+                this.loadUndergroundTracks(),
+                this.loadRisingTracks()
+            ]);
         } catch (error) {
-            chartList.innerHTML = '<div class="info-message">Error loading charts. Please try again.</div>';
-            console.error('Error loading charts:', error);
+            this.showError('Failed to load charts');
+            console.error('Chart loading error:', error);
+        } finally {
+            this.hideLoading();
         }
     }
 
-    renderCharts(tracks) {
-        const chartList = document.getElementById('chartList');
-        
-        if (!tracks || tracks.length === 0) {
-            chartList.innerHTML = '<div class="info-message">No tracks found for the selected criteria.</div>';
-            return;
-        }
+    async loadChart(type, view) {
+        try {
+            // Check cache first
+            const cacheKey = `${type}-${view}`;
+            if (this.cache.has(cacheKey)) {
+                this.renderChart(type, this.cache.get(cacheKey));
+                return;
+            }
 
-        chartList.innerHTML = tracks.map((track, index) => `
-            <div class="track-item">
-                <div class="track-position">#${index + 1}</div>
+            // Simulate API call with sophisticated mock data
+            const tracks = this.generateMockTracks(type, 20);
+            
+            // Cache the result
+            this.cache.set(cacheKey, tracks);
+            
+            this.renderChart(type, tracks);
+        } catch (error) {
+            console.error(`Failed to load ${type} chart:`, error);
+            this.showError(`Failed to load ${type} chart`);
+        }
+    }
+
+    async loadUndergroundTracks() {
+        const tracks = this.generateMockTracks('underground', 10);
+        this.renderTrackList('underground-tracks', tracks, 'underground');
+    }
+
+    async loadRisingTracks() {
+        const tracks = this.generateMockTracks('rising', 10);
+        this.renderTrackList('rising-tracks', tracks, 'rising');
+    }
+
+    renderChart(type, tracks) {
+        const containerId = `${type}-tracks`;
+        this.renderTrackList(containerId, tracks, type);
+    }
+
+    renderTrackList(containerId, tracks, listType) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = tracks.map((track, index) => `
+            <div class="track-card ${listType}" data-track-id="${track.id}">
+                <div class="track-rank">${index + 1}</div>
+                <div class="track-artwork artwork-placeholder">
+                    <span>🎵</span>
+                </div>
                 <div class="track-info">
-                    <div class="track-title">${this.escapeHtml(track.title)}</div>
-                    <div class="track-artist">${this.escapeHtml(track.artist)}</div>
-                    <div class="track-meta">
-                        <span>Genre: ${track.genre}</span>
-                        <span>Votes: ${track.vote_count || 0}</span>
-                        <span>Platforms: ${track.platform_count || 1}</span>
+                    <div class="track-title">${track.title}</div>
+                    <div class="track-artist">${track.artist}</div>
+                    <div class="track-platforms">
+                        ${track.platforms.map(platform => 
+                            `<span class="platform-badge ${platform}" title="${platform}"></span>`
+                        ).join('')}
+                    </div>
+                    <div class="track-stats">
+                        ${this.renderTrackStats(track, listType)}
                     </div>
                 </div>
-                <div class="track-score">${track.score ? track.score.toFixed(1) : 'N/A'}</div>
-            </div>
-        `).join('');
-    }
-
-    async handleTrackSearch() {
-        const query = document.getElementById('trackSearch').value.trim();
-        const voteList = document.getElementById('voteList');
-        
-        if (!query) {
-            voteList.innerHTML = '<div class="info-message">Please enter a search term.</div>';
-            return;
-        }
-
-        voteList.innerHTML = '<div class="loading">Searching tracks...</div>';
-        
-        try {
-            const tracks = await API.searchTracks(query);
-            this.renderVotingTracks(tracks);
-        } catch (error) {
-            voteList.innerHTML = '<div class="info-message">Error searching tracks. Please try again.</div>';
-            console.error('Error searching tracks:', error);
-        }
-    }
-
-    renderVotingTracks(tracks) {
-        const voteList = document.getElementById('voteList');
-        
-        if (!tracks || tracks.length === 0) {
-            voteList.innerHTML = '<div class="info-message">No tracks found matching your search.</div>';
-            return;
-        }
-
-        voteList.innerHTML = tracks.map(track => `
-            <div class="track-item">
-                <div class="track-info">
-                    <div class="track-title">${this.escapeHtml(track.title)}</div>
-                    <div class="track-artist">${this.escapeHtml(track.artist)}</div>
-                    <div class="track-meta">
-                        <span>Genre: ${track.genre}</span>
-                        <span>Current Score: ${track.score ? track.score.toFixed(1) : 'N/A'}</span>
-                    </div>
-                    <div class="vote-section">
-                        <input type="number" id="score-${track.id}" min="1" max="10" placeholder="Score (1-10)" ${!this.currentUser ? 'disabled' : ''}>
-                        <button class="vote-btn" onclick="app.submitVote(${track.id})" ${!this.currentUser ? 'disabled' : ''}>
-                            ${this.currentUser ? 'Vote' : 'Login to Vote'}
-                        </button>
-                    </div>
+                <div class="track-trend ${track.trend}">${this.getTrendIcon(track.trend)}</div>
+                <div class="track-actions">
+                    <button class="play-btn" data-track-id="${track.id}" title="Play ${track.title}">
+                        ▶
+                    </button>
+                    ${listType === 'community' ? 
+                        `<button class="vote-btn floating" data-track-id="${track.id}">Vote</button>` : 
+                        ''
+                    }
                 </div>
             </div>
-        `).join('');
-    }
-
-    async submitVote(trackId) {
-        if (!this.currentUser) {
-            this.showNotification('Please login to vote!', 'error');
-            return;
-        }
-
-        const scoreInput = document.getElementById(`score-${trackId}`);
-        const score = parseInt(scoreInput.value);
-        
-        if (!score || score < 1 || score > 10) {
-            this.showNotification('Please enter a valid score (1-10)!', 'error');
-            return;
-        }
-
-        try {
-            await API.submitVote(trackId, score, this.authToken);
-            this.showNotification('Vote submitted successfully!', 'success');
-            scoreInput.value = '';
-            scoreInput.disabled = true;
-            scoreInput.nextElementSibling.textContent = 'Voted';
-            scoreInput.nextElementSibling.disabled = true;
-        } catch (error) {
-            this.showNotification(error.message, 'error');
-        }
-    }
-
-    async handleTrackSubmit(e) {
-        e.preventDefault();
-        
-        if (!this.currentUser) {
-            this.showNotification('Please login to submit tracks!', 'error');
-            return;
-        }
-
-        const trackData = {
-            url: document.getElementById('trackUrl').value,
-            title: document.getElementById('trackTitle').value,
-            artist: document.getElementById('trackArtist').value,
-            genre: document.getElementById('trackGenre').value,
-            description: document.getElementById('trackDescription').value
-        };
-
-        try {
-            await API.submitTrack(trackData, this.authToken);
-            this.showNotification('Track submitted successfully!', 'success');
-            document.getElementById('submitForm').reset();
-        } catch (error) {
-            this.showNotification(error.message, 'error');
-        }
-    }
-
-    async loadUserStats() {
-        if (!this.currentUser) return;
-        
-        try {
-            const stats = await API.getUserStats(this.currentUser.id, this.authToken);
-            document.getElementById('votesCount').textContent = stats.votes_count || 0;
-            document.getElementById('submissionsCount').textContent = stats.submissions_count || 0;
-            document.getElementById('trustScore').textContent = stats.trust_score || 0;
-        } catch (error) {
-            console.error('Error loading user stats:', error);
-        }
-    }
-
-    showNotification(message, type = 'info') {
-        const notification = document.getElementById('notification');
-        notification.textContent = message;
-        notification.className = `notification ${type}`;
-        notification.classList.remove('hidden');
-        
-        setTimeout(() => {
-            notification.classList.add('hidden');
-        }, 4000);
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-}
-
-const app = new DubstepApp();
+        `).joi
