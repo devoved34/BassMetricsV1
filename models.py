@@ -90,12 +90,12 @@ class PlatformData(db.Model):
     track = db.relationship("Track", back_populates="platform_data")
     
     def set_metadata(self, data):
-    self.metadata = json.dumps(data)
-
-def get_metadata(self):
-    if self.metadata:
-        return json.loads(self.metadata)
-    return {}
+        self.platform_metadata = json.dumps(data)
+    
+    def get_metadata(self):
+        if self.platform_metadata:
+            return json.loads(self.platform_metadata)
+        return {}
     
     def __repr__(self):
         return f'<PlatformData {self.platform}:{self.external_id}>'
