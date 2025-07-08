@@ -1056,7 +1056,7 @@ def rate_limit_exceeded(e):
     return jsonify({'message': 'Rate limit exceeded'}), 429
 
 # INITIALIZE DATABASE
-@app.before_first_request
+@app.before_serving
 def create_tables():
     """Create database tables on first request"""
     try:
