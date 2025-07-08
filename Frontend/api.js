@@ -5,12 +5,20 @@
 
 class APIManager {
     constructor() {
-        this.baseURL = 'http://localhost:5000/api'; // Will be updated for production
+        // Updated to use your Railway API URL
+        this.baseURL = 'https://bassmetricsv1-production.up.railway.app/api';
         this.timeout = 10000; // 10 second timeout
         this.retryAttempts = 3;
         
         // API endpoints
         this.endpoints = {
+            // New Railway API endpoints
+            health: '/health',
+            spotifyTrending: '/spotify/trending',
+            youtubeTrending: '/youtube/trending',
+            combinedTrending: '/trending/combined',
+            metrics: '/metrics',
+            
             // Chart endpoints
             algorithmCharts: '/charts/algorithm',
             communityCharts: '/charts/community', 
@@ -83,6 +91,56 @@ class APIManager {
         }
     }
 
+    // NEW RAILWAY API METHODS
+    async getHealth() {
+        try {
+            return await this.makeRequest(this.endpoints.health);
+        } catch (error) {
+            console.error('Health check failed:', error);
+            throw error;
+        }
+    }
+
+    async getSpotifyTrending() {
+        try {
+            const response = await this.makeRequest(this.endpoints.spotifyTrending);
+            return response;
+        } catch (error) {
+            console.error('Failed to fetch Spotify trending:', error);
+            throw error;
+        }
+    }
+
+    async getYouTubeTrending() {
+        try {
+            const response = await this.makeRequest(this.endpoints.youtubeTrending);
+            return response;
+        } catch (error) {
+            console.error('Failed to fetch YouTube trending:', error);
+            throw error;
+        }
+    }
+
+    async getCombinedTrending() {
+        try {
+            const response = await this.makeRequest(this.endpoints.combinedTrending);
+            return response;
+        } catch (error) {
+            console.error('Failed to fetch combined trending:', error);
+            throw error;
+        }
+    }
+
+    async getMetrics() {
+        try {
+            const response = await this.makeRequest(this.endpoints.metrics);
+            return response;
+        } catch (error) {
+            console.error('Failed to fetch metrics:', error);
+            throw error;
+        }
+    }
+
     // Authentication token management
     getAuthToken() {
         return localStorage.getItem('bassMetricsToken');
@@ -146,7 +204,7 @@ class APIManager {
         }
     }
 
-    // VERIFICATION API METHODS
+    // VERIFICATION API METHODS (Updated to use Railway endpoint)
     async verifyArtist(artistName, platform = 'spotify') {
         try {
             const response = await this.makeRequest(
@@ -386,4 +444,51 @@ class APIManager {
     isValidUrl(string) {
         try {
             new URL(string);
-            retu
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+}
+
+// Create global instance
+const apiManager = new APIManager();
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = APIManager;
+}
+
+// Example usage in your frontend:
+/*
+// Test the API connection
+apiManager.getHealth().then(data => {
+    console.log('API Health:', data);
+});
+
+// Get Spotify trending tracks
+apiManager.getSpotifyTrending().then(data => {
+    console.log('Spotify Trending:', data);
+    // Display tracks in your UI
+});
+
+// Get YouTube trending
+apiManager.getYouTubeTrending().then(data => {
+    console.log('YouTube Trending:', data);
+});
+
+// Get combined trending from both platforms
+apiManager.getCombinedTrending().then(data => {
+    console.log('Combined Trending:', data);
+});
+
+// Verify an artist
+apiManager.verifyArtist('Skrillex').then(data => {
+    console.log('Artist Verification:', data);
+});
+
+// Get platform metrics
+apiManager.getMetrics().then(data => {
+    console.log('Platform Metrics:', data);
+});
+*/
