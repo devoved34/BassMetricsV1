@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BassMetrics - Discover the Pulse of Bass Music</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Test API Button - Add this for debugging -->
+    <button onclick="testAPI()" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: #ff0080; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">
+        Test API
+    </button>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">🎵 BassMetrics</div>
+        <ul class="nav-links">
+            <li><a href="#" class="nav-btn active" data-section="charts">Charts</a></li>
+            <li><a href="#" class="nav-btn" data-section="submit">Submit Track</a></li>
+            <li><a href="#" class="nav-btn" data-section="vote">Vote</a></li>
+            <li><a href="#" class="nav-btn" data-section="profile">Profile</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="dashboard-container">
+        
+        <!-- Charts Section -->
+        <section id="charts" class="section active">
+            <div class="section-header">
+                <h1 class="hero-headline">Discover the Pulse of Bass Music</h1>
+                <p class="hero-subheadline">Real-time charts, community-driven rankings, and the hottest underground & rising artists.</p>
+            </div>
+
+            <!-- Main Charts Grid -->
+            <div class="dashboard-columns">
+                <!-- Algorithm Rankings -->
+                <div class="dashboard-panel algorithm-panel">
+                    <div class="panel-header">
+                        <h2>🔥 Algorithm Rankings</h2>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" data-view="mainstream" data-chart="algorithm">Mainstream</button>
+                            <button class="toggle-btn" data-view="all-genres" data-chart="algorithm">All Genres</button>
+                        </div>
+                    </div>
+                    <div class="scrollable-list" id="algorithm-tracks">
+                        <!-- Algorithm tracks will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Community Choice Rankings -->
+                <div class="dashboard-panel community-panel">
+                    <div class="panel-header">
+                        <h2>👑 Community Choice</h2>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" data-view="overall" data-chart="community">Overall</button>
+                            <button class="toggle-btn" data-view="components" data-chart="community">Components</button>
+                        </div>
+                    </div>
+                    <div class="scrollable-list" id="community-tracks">
+                        <!-- Community tracks will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Underground & Rising Sections -->
+            <div class="underground-rising-section">
+                <div class="underground-panel">
+                    <h3>🌟 Underground Top 10</h3>
+                    <div class="scrollable-list top10-list" id="underground-tracks">
+                        <!-- Underground tracks will be rendered here -->
+                    </div>
+                </div>
+                <div class="rising-panel">
+                    <h3>📈 Rising Top 10</h3>
+                    <div class="scrollable-list top10-list" id="rising-tracks">
+                        <!-- Rising tracks will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Submit Track Section -->
+        <section id="submit" class="section">
+            <div class="section-header">
+                <h2>Submit Your Track</h2>
+                <p>Verified artists can submit their tracks for community voting and chart consideration.</p>
+            </div>
+
+            <div class="verification-submission-section">
+                <!-- Artist Verification Panel -->
+                <div class="verification-panel">
+                    <h3>Artist Verification</h3>
+                    <form id="verification-form">
+                        <div class="form-group">
+                            <label for="artist-name">Artist Name</label>
+                            <input type="text" id="artist-name" name="artist-name" required>
+                            <div id="verification-status" class="verification-status"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="platform">Platform</label>
+                            <select id="platform" name="platform" required>
+                                <option value="">Select Platform</option>
+                                <option value="spotify">Spotify</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="soundcloud">SoundCloud</option>
+                                <option value="apple">Apple Music</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profile-link">Profile Link</label>
+                            <input type="url" id="profile-link" name="profile-link" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Verify Artist</button>
+                    </form>
+                </div>
+
+                <!-- Track Submission Panel -->
+                <div class="submission-panel">
+                    <h3>Submit Your Track</h3>
+                    <form id="submission-form">
+                        <div class="form-group">
+                            <label for="track-title">Track Title</label>
+                            <input type="text" id="track-title" name="track-title" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="genre">Genre</label>
+                            <select id="genre" name="genre" required>
+                                <option value="">Select Genre</option>
+                                <option value="dubstep">Dubstep</option>
+                                <option value="riddim">Riddim</option>
+                                <option value="melodic-dubstep">Melodic Dubstep</option>
+                                <option value="future-bass">Future Bass</option>
+                                <option value="trap">Trap</option>
+                                <option value="drum-n-bass">Drum & Bass</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Platform Links</label>
+                            <input type="url" id="soundcloud-link" placeholder="SoundCloud URL" class="platform-input">
+                            <input type="url" id="spotify-link" placeholder="Spotify URL" class="platform-input">
+                            <input type="url" id="youtube-link" placeholder="YouTube URL" class="platform-input">
+                        </div>
+                        
+                        <button type="submit" id="submit-btn" class="btn btn-primary" disabled>Submit Track</button>
+                    </form>
+                    <div id="submission-status"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voting Section -->
+        <section id="vote" class="section">
+            <div class="section-header">
+                <h2>Rate Tracks</h2>
+                <p>Help shape the community rankings by rating tracks across multiple categories.</p>
+            </div>
+
+            <div class="voting-container">
+                <div class="vote-controls">
+                    <input type="text" id="vote-search" placeholder="Search tracks to vote on...">
+                    <button id="load-voting-tracks" class="btn btn-primary">Load New Tracks</button>
+                </div>
+                
+                <div id="voting-tracks" class="voting-list">
+                    <!-- Voting tracks will be rendered here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profile" class="section">
+            <div class="section-header">
+                <h2>Your Profile</h2>
+                <p>Manage your account and view your voting history.</p>
+            </div>
+
+            <div class="profile-container">
+                <!-- Login/Register Forms -->
+                <div id="auth-container" class="auth-container">
+                    <div id="login-form" class="auth-form">
+                        <h3>Login</h3>
+                        <form>
+                            <div class="form-group">
+                                <label for="login-username">Username</label>
+                                <input type="text" id="login-username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="login-password">Password</label>
+                                <input type="password" id="login-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary auth-btn">Login</button>
+                        </form>
+                        <p>Don't have an account? <a href="#" id="show-register">Register here</a></p>
+                    </div>
+
+                    <div id="register-form" class="auth-form hidden">
+                        <h3>Register</h3>
+                        <form>
+                            <div class="form-group">
+                                <label for="register-username">Username</label>
+                                <input type="text" id="register-username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="register-email">Email</label>
+                                <input type="email" id="register-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="register-password">Password</label>
+                                <input type="password" id="register-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary auth-btn">Register</button>
+                        </form>
+                        <p>Already have an account? <a href="#" id="show-login">Login here</a></p>
+                    </div>
+                </div>
+
+                <!-- User Profile (hidden by default) -->
+                <div id="user-profile" class="user-profile hidden">
+                    <h3>Welcome, <span id="username"></span>!</h3>
+                    <div class="profile-stats">
+                        <div class="stat">
+                            <span class="stat-label">Votes Cast</span>
+                            <span class="stat-value" id="votes-cast">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Tracks Submitted</span>
+                            <span class="stat-value" id="tracks-submitted">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Trust Score</span>
+                            <span class="stat-value" id="trust-score">100</span>
+                        </div>
+                    </div>
+                    <button id="logout-btn" class="btn btn-primary">Logout</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div>BassMetrics &copy; 2024. Discover the pulse of bass music.</div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
